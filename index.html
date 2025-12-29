@@ -9,13 +9,14 @@
         body { background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         .card { background: white; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
         .input-label { display: block; font-size: 0.75rem; font-weight: bold; color: #4b5563; margin-bottom: 2px; margin-left: 4px; }
+        .sync-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
 <body class="p-4">
 
     <header class="mb-6">
         <h1 class="text-2xl font-bold text-blue-600">RittenMaster 2026</h1>
-        <p class="text-sm text-gray-500">Sluitende Rittenregistratie</p>
+        <p class="text-sm text-gray-500">Sluitende Rittenregistratie & Cloud Sync</p>
     </header>
 
     <div class="card bg-blue-50">
@@ -30,27 +31,27 @@
     </div>
 
     <div class="card">
-        <h2 class="font-bold mb-3">Auto's</h2>
+        <h2 class="font-bold mb-3">Mijn Auto's</h2>
         <div class="flex space-x-2 mb-3">
             <input type="text" id="newAuto" placeholder="Kenteken (bijv. N-123-XX)" class="flex-1 p-2 border rounded uppercase text-sm">
-            <button onclick="addAuto()" class="bg-blue-500 text-white px-4 py-2 rounded font-bold">+</button>
+            <button onclick="addAuto()" class="bg-blue-500 text-white px-4 py-2 rounded font-bold shadow-sm">+</button>
         </div>
         <div id="autoLijstBeheer" class="flex flex-wrap gap-2"></div>
     </div>
 
     <div class="card border-2 border-blue-400">
-        <h2 class="font-bold mb-4 text-blue-800 text-lg">Nieuwe Rit</h2>
+        <h2 class="font-bold mb-4 text-blue-800 text-lg">Nieuwe Rit Registreren</h2>
         
         <div class="space-y-3">
             <div>
-                <span class="input-label">AUTO</span>
-                <select id="autoSelect" onchange="loadLastData()" class="w-full p-3 border rounded bg-white font-bold"></select>
+                <span class="input-label">AUTO SELECTEREN</span>
+                <select id="autoSelect" onchange="loadLastData()" class="w-full p-3 border rounded bg-white font-bold shadow-sm"></select>
             </div>
 
             <div class="grid grid-cols-2 gap-2">
                 <div>
                     <span class="input-label">BEGINSTAND</span>
-                    <input type="number" id="beginStand" class="w-full p-3 border rounded shadow-sm">
+                    <input type="number" id="beginStand" class="w-full p-3 border rounded shadow-sm bg-gray-50">
                 </div>
                 <div>
                     <span class="input-label">EINDSTAND</span>
@@ -60,19 +61,19 @@
 
             <div>
                 <span class="input-label">VERTREK ADRES</span>
-                <input type="text" id="vertrekAdres" placeholder="Straat, Plaats" class="w-full p-3 border rounded shadow-sm">
+                <input type="text" id="vertrekAdres" placeholder="Straat, Plaats" class="w-full p-3 border rounded shadow-sm bg-gray-50">
             </div>
 
             <div>
                 <span class="input-label">AANKOMST ADRES</span>
                 <div class="flex space-x-2">
                     <input type="text" id="aankomstAdres" placeholder="Straat, Plaats" class="flex-1 p-3 border rounded shadow-sm">
-                    <button onclick="getGPS()" class="bg-gray-100 p-3 rounded border">📍</button>
+                    <button onclick="getGPS()" class="bg-gray-100 p-3 rounded border shadow-sm">📍</button>
                 </div>
             </div>
 
             <div>
-                <span class="input-label">RIT TYPE</span>
+                <span class="input-label">TYPE RIT</span>
                 <select id="ritType" class="w-full p-3 border rounded bg-white shadow-sm font-semibold">
                     <option value="Zakelijk">Zakelijk</option>
                     <option value="Privé">Privé</option>
@@ -80,21 +81,26 @@
             </div>
 
             <button onclick="saveRit()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform mt-2">
-                Rit Registreren
+                Rit Opslaan
             </button>
         </div>
     </div>
 
-    <div class="flex space-x-2 mb-6">
-        <button onclick="exportToExcel()" class="flex-1 bg-green-600 text-white py-3 rounded-lg shadow font-bold">Excel Export</button>
-        <button onclick="clearData()" class="flex-1 bg-red-50 text-red-600 py-3 rounded-lg text-sm">Wis Data</button>
+    <div class="flex flex-col space-y-2 mb-8">
+        <button onclick="syncRitten()" class="w-full bg-blue-500 text-white py-3 rounded-lg shadow font-bold flex items-center justify-center">
+            🔄 Synchroniseer met Google
+        </button>
+        <div class="flex space-x-2">
+            <button onclick="exportToExcel()" class="flex-1 bg-green-600 text-white py-3 rounded-lg shadow font-bold text-sm">Excel Export</button>
+            <button onclick="clearData()" class="flex-1 bg-red-50 text-red-600 py-3 rounded-lg text-sm">Wis Lokale Data</button>
+        </div>
     </div>
 
-    <h2 class="font-bold mb-4 text-gray-700">Historie</h2>
+    <h2 class="font-bold mb-4 text-gray-700">Historie (laatste ritten)</h2>
     <div id="rittenLijst" class="space-y-3 pb-20"></div>
 
     <script>
-        // CONFIGURATIE
+        // --- CONFIGURATIE ---
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzJK6fSqR9zMhKluWK-EV7dHhfeY6RE0wDyHYv4UHXsEtYEoETY8OQfK6RfUNz0Hiw3/exec";
         
         let ritten = JSON.parse(localStorage.getItem('ritten')) || [];
@@ -110,6 +116,11 @@
                 
                 const div = document.createElement('div');
                 div.className = 'card p-4 text-xs border-l-4 ' + (rit.type === 'Zakelijk' ? 'border-green-500' : 'border-red-500');
+                
+                const statusIcoon = rit.synced 
+                    ? '<span class="sync-badge bg-green-100 text-green-700">☁️ Cloud OK</span>' 
+                    : '<span class="sync-badge bg-orange-100 text-orange-700">⏳ Wacht op sync</span>';
+
                 div.innerHTML = `
                     <div class="flex justify-between font-bold mb-1">
                         <span>${rit.datum}</span>
@@ -118,10 +129,14 @@
                     <p><strong>${rit.auto}</strong>: ${rit.beginStand} → ${rit.eindStand} (${rit.afstand} km)</p>
                     <p class="text-gray-600 mt-1">🚩 ${rit.vertrek}</p>
                     <p class="text-gray-600">🏁 ${rit.aankomst}</p>
+                    <div class="mt-3 pt-2 border-t flex justify-between items-center">
+                        ${statusIcoon}
+                    </div>
                 `;
                 lijst.prepend(div);
             });
 
+            // Update Dashboard
             document.getElementById('kmStatus').innerText = `${priveKms} / 500`;
             document.getElementById('kmResterend').innerText = `${Math.max(0, 500 - priveKms)} km over`;
             const percentage = Math.min((priveKms / 500) * 100, 100);
@@ -131,139 +146,16 @@
             loadLastData();
         }
 
-        function updateAutoDropdowns() {
-            const select = document.getElementById('autoSelect');
-            const beheerLijst = document.getElementById('autoLijstBeheer');
-            select.innerHTML = '';
-            beheerLijst.innerHTML = '';
-
-            autos.forEach((auto, index) => {
-                const opt = document.createElement('option');
-                opt.value = auto; opt.innerText = auto;
-                select.appendChild(opt);
-
-                const tag = document.createElement('span');
-                tag.className = 'bg-gray-200 px-3 py-1 rounded-full text-sm font-bold flex items-center';
-                tag.innerHTML = `${auto} <button onclick="removeAuto(${index})" class="ml-2 text-red-500">×</button>`;
-                beheerLijst.appendChild(tag);
-            });
-        }
-
-        function loadLastData() {
-            const selectedAuto = document.getElementById('autoSelect').value;
-            const rittenVanAuto = ritten.filter(r => r.auto === selectedAuto);
+        async function syncRitten() {
+            const nietGesynct = ritten.filter(r => !r.synced);
             
-            if(rittenVanAuto.length > 0) {
-                const laatsteRit = rittenVanAuto[rittenVanAuto.length - 1];
-                document.getElementById('beginStand').value = laatsteRit.eindStand;
-                document.getElementById('vertrekAdres').value = laatsteRit.aankomst;
-            } else {
-                document.getElementById('beginStand').value = '';
-                document.getElementById('vertrekAdres').value = '';
-            }
-        }
-
-        async function getGPS() {
-            if (navigator.geolocation) {
-                document.getElementById('aankomstAdres').value = "Locatie bepalen...";
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
-                        const data = await res.json();
-                        document.getElementById('aankomstAdres').value = data.display_name.split(',').slice(0,2).join(',');
-                    } catch (e) {
-                        document.getElementById('aankomstAdres').value = "Adres niet gevonden";
-                    }
-                });
-            }
-        }
-
-        async function saveRit() {
-            const auto = document.getElementById('autoSelect').value;
-            const begin = parseFloat(document.getElementById('beginStand').value);
-            const eind = parseFloat(document.getElementById('eindStand').value);
-            const vertrek = document.getElementById('vertrekAdres').value;
-            const aankomst = document.getElementById('aankomstAdres').value;
-            const type = document.getElementById('ritType').value;
-
-            if(!begin || !eind || !vertrek || !aankomst) return alert('Vul alle velden in!');
-            if(eind <= begin) return alert('Eindstand moet hoger zijn dan beginstand!');
-
-            const rit = {
-                datum: new Date().toLocaleDateString('nl-NL'),
-                auto: auto,
-                beginStand: begin,
-                eindStand: eind,
-                afstand: eind - begin,
-                vertrek: vertrek,
-                aankomst: aankomst,
-                type: type
-            };
-
-            // Opslaan op de telefoon
-            ritten.push(rit);
-            localStorage.setItem('ritten', JSON.stringify(ritten));
-            
-            // Backup versturen naar Google Sheets
-            try {
-                fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', 
-                    body: JSON.stringify(rit)
-                });
-            } catch (e) {
-                console.log("Backup kon niet worden verzonden");
+            if (nietGesynct.length === 0) {
+                return alert("Alle ritten staan al in Google Sheets!");
             }
 
-            updateUI();
+            alert(`Bezig met synchroniseren van ${nietGesynct.length} ritten...`);
 
-            // Maak de velden leeg voor de volgende rit
-            document.getElementById('eindStand').value = '';
-            document.getElementById('aankomstAdres').value = '';
-            alert('Rit succesvol geregistreerd!');
-        }
-
-        function addAuto() {
-            const val = document.getElementById('newAuto').value.trim().toUpperCase();
-            if(val && !autos.includes(val)) {
-                autos.push(val);
-                localStorage.setItem('autos', JSON.stringify(autos));
-                document.getElementById('newAuto').value = '';
-                updateUI();
-            }
-        }
-
-        function removeAuto(index) {
-            if(confirm('Auto verwijderen?')) {
-                autos.splice(index, 1);
-                localStorage.setItem('autos', JSON.stringify(autos));
-                updateUI();
-            }
-        }
-
-        function exportToExcel() {
-            if(ritten.length === 0) return alert('Geen ritten om te exporteren');
-            let csv = "Datum;Kenteken;Beginstand;Eindstand;Afstand;Vertrekadres;Aankomstadres;Type\n";
-            ritten.forEach(r => {
-                csv += `${r.datum};${r.auto};${r.beginStand};${r.eindStand};${r.afstand};${r.vertrek};${r.aankomst};${r.type}\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `Rittenregistratie_${new Date().toLocaleDateString()}.csv`;
-            link.click();
-        }
-
-        function clearData() {
-            if(confirm('Let op: Hiermee wis je ALLE data van je telefoon. Weet je het zeker?')) {
-                localStorage.removeItem('ritten');
-                ritten = [];
-                updateUI();
-            }
-        }
-
-        // Start de app
-        updateUI();
-    </script>
-</body>
-</html>
+            for (let rit of nietGesynct) {
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
