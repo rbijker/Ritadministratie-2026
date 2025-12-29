@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RittenMaster Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .card { background: white; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
+    </style>
+</head>
+<body class="p-4">
+
+    <header class="mb-6">
+        <h1 class="text-2xl font-bold text-blue-600">RittenMaster</h1>
+        <p class="text-sm text-gray-500">Belastingdienst-proof rittenregistratie</p>
+    </header>
+
+    <div class="card bg-blue-50">
+        <h2 class="font-bold text-lg mb-2">Privé Kilometers</h2>
+        <div class="flex justify-between items-center">
+            <span class="text-3xl font-bold" id="kmStatus">0 / 500</span>
+            <span class="text-sm font-medium text-blue-600">km over</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
+            <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="font-bold mb-4">Nieuwe Rit Registreren</h2>
+        <div class="space-y-4">
+            <select id="autoSelect" class="w-full p-2 border rounded">
+                <option value="Auto 1">Auto 1 (Standaard)</option>
+                <option value="Auto 2">Auto 2</option>
+            </select>
+            
+            <input type="number" id="kmStand" placeholder="Huidige Kilometerstand" class="w-full p-2 border rounded">
+            
+            <div class="flex space-x-2">
+                <input type="text" id="locatie" placeholder="Adres (of gebruik GPS)" class="flex-1 p-2 border rounded">
+                <button onclick="getGPS()" class="bg-gray-200 p-2 rounded">📍</button>
+            </div>
+
+            <select id="ritType" class="w-full p-2 border rounded">
+                <option value="Zakelijk">Zakelijk</option>
+                <option value="Privé">Privé</option>
+            </select>
+
+            <button onclick="saveRit()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg">Rit Opslaan</button>
+        </div>
+    </div>
+
+    <div class="flex space-x-2 mb-8">
+        <button onclick="exportToExcel()" class="flex-1 bg-green-600 text-white py-2 rounded shadow">Excel Export</button>
+        <button onclick="clearData()" class="flex-1 bg-red-100 text-red-600 py-2 rounded">Wis alles</button>
+    </div>
+
+    <h2 class="font-bold mb-4">Laatste Ritten</h2>
+    <div id="rittenLijst" class="space-y-2"></div>
+
+    <script>
+        let ritten = JSON.parse(localStorage.getItem('ritten')) || [];
+
+        function updateUI() {
+            const lijst = document.getElementById('rittenLijst');
+            lijst.innerHTML = '';
+            let priveKms = 0;
+
+            ritten.forEach((rit, index) => {
+                if(rit.type === 'Privé') priveKms += parseFloat(rit.afstand || 0);
+                
+                const div = document.createElement('div');
+                div.className = 'card p-4 text-sm';
+                div.innerHTML = `
+                    <div class="flex justify-between font-bold">
+                        <span>${rit.datum}</span>
+                        <span class="${rit.type === 'Zakelijk' ? 'text-green-600' : 'text-red-600'}">${rit.type}</span>
+                    </div>
+                    <p>${rit.auto} - Stand: ${rit.stand} km</p>
+                    <p class="text-gray-500">${rit.adres}</p>
+                `;
+                lijst.prepend(div);
+            });
+
+            // Update voortgangsbalk
+            document.getElementById('kmStatus').innerText = `${priveKms} / 500`;
+            const percentage = Math.min((priveKms / 500) * 100, 100);
+            document.getElementById('progressBar').style.width = percentage + '%';
+        }
+
+        async function getGPS() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    // Gratis Reverse Geocoding via Nominatim
+                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                    const data = await res.json();
+                    document.getElementById('locatie').value = data.display_name.split(',').slice(0,2).join(',');
+                });
+            }
+        }
+
+        function saveRit() {
+            const rit = {
+                datum: new Date().toLocaleString('nl-NL'),
+                auto: document.getElementById('autoSelect').value,
+                stand: document.getElementById('kmStand').value,
+                adres: document.getElementById('locatie').value,
+                type: document.getElementById('ritType').value,
+                afstand: 0 // In een volgende versie berekenen we dit automatisch tussen twee ritten
+            };
+
+            if(!rit.stand || !rit.adres) return alert('Vul alle velden in!');
+
+            // Bereken afstand t.o.v. vorige rit van deze auto
+            const vorigeRit = ritten.filter(r => r.auto === rit.auto).slice(-1)[0];
+            if(vorigeRit) {
+                rit.afstand = rit.stand - vorigeRit.stand;
+            }
+
+            ritten.push(rit);
+            localStorage.setItem('ritten', JSON.stringify(ritten));
+            updateUI();
+            alert('Rit succesvol opgeslagen!');
+        }
+
+        function exportToExcel() {
+            let csvContent = "data:text/csv;charset=utf-8,Datum;Auto;Stand;Adres;Type;Afstand\n";
+            ritten.forEach(r => {
+                csvContent += `${r.datum};${r.auto};${r.stand};${r.adres};${r.type};${r.afstand}\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "rittenregistratie.csv");
+            document.body.appendChild(link);
+            link.click();
+        }
+
+        function clearData() {
+            if(confirm('Weet je zeker dat je alle gegevens wilt wissen?')) {
+                localStorage.clear();
+                ritten = [];
+                updateUI();
+            }
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
