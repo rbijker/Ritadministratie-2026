@@ -2,14 +2,16 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RittenMaster Pro - Belastingdienst Proof</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         .card { background: white; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
         .input-label { display: block; font-size: 0.75rem; font-weight: bold; color: #4b5563; margin-bottom: 2px; margin-left: 4px; }
         .sync-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+        /* Voorkomt inzoomen op iPhone bij focus op input */
+        input, select { font-size: 16px !important; }
     </style>
 </head>
 <body class="p-4">
@@ -31,31 +33,36 @@
     </div>
 
     <div class="card">
-        <h2 class="font-bold mb-3">Mijn Auto's</h2>
+        <h2 class="font-bold mb-3 text-gray-700">Mijn Auto's</h2>
         <div class="flex space-x-2 mb-3">
-            <input type="text" id="newAuto" placeholder="Kenteken (bijv. N-123-XX)" class="flex-1 p-2 border rounded uppercase text-sm">
-            <button onclick="addAuto()" class="bg-blue-500 text-white px-4 py-2 rounded font-bold shadow-sm">+</button>
+            <input type="text" id="newAuto" placeholder="Kenteken (bijv. N-123-XX)" 
+                   class="flex-1 p-3 border rounded uppercase text-sm shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                   onkeypress="if(event.key === 'Enter') addAuto()">
+            <button onclick="addAuto()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-bold shadow-md active:bg-blue-700">
+                +
+            </button>
         </div>
-        <div id="autoLijstBeheer" class="flex flex-wrap gap-2"></div>
+        <div id="autoLijstBeheer" class="flex flex-wrap gap-2 min-h-[30px]">
+            </div>
     </div>
 
     <div class="card border-2 border-blue-400">
         <h2 class="font-bold mb-4 text-blue-800 text-lg">Nieuwe Rit Registreren</h2>
         
-        <div class="space-y-3">
+        <div class="space-y-4">
             <div>
                 <span class="input-label">AUTO SELECTEREN</span>
                 <select id="autoSelect" onchange="loadLastData()" class="w-full p-3 border rounded bg-white font-bold shadow-sm"></select>
             </div>
 
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-2 gap-3">
                 <div>
                     <span class="input-label">BEGINSTAND</span>
-                    <input type="number" id="beginStand" class="w-full p-3 border rounded shadow-sm bg-gray-50">
+                    <input type="number" id="beginStand" class="w-full p-3 border rounded shadow-sm bg-gray-50" placeholder="0">
                 </div>
                 <div>
                     <span class="input-label">EINDSTAND</span>
-                    <input type="number" id="eindStand" class="w-full p-3 border rounded shadow-sm">
+                    <input type="number" id="eindStand" class="w-full p-3 border rounded shadow-sm" placeholder="0">
                 </div>
             </div>
 
@@ -68,7 +75,7 @@
                 <span class="input-label">AANKOMST ADRES</span>
                 <div class="flex space-x-2">
                     <input type="text" id="aankomstAdres" placeholder="Straat, Plaats" class="flex-1 p-3 border rounded shadow-sm">
-                    <button onclick="getGPS()" class="bg-gray-100 p-3 rounded border shadow-sm">📍</button>
+                    <button onclick="getGPS()" class="bg-gray-100 px-4 rounded border shadow-sm active:bg-gray-200">📍</button>
                 </div>
             </div>
 
@@ -86,18 +93,18 @@
         </div>
     </div>
 
-    <div class="flex flex-col space-y-2 mb-8">
-        <button onclick="syncRitten()" class="w-full bg-blue-500 text-white py-3 rounded-lg shadow font-bold flex items-center justify-center">
+    <div class="flex flex-col space-y-3 mb-10">
+        <button onclick="syncRitten()" class="w-full bg-blue-500 text-white py-3 rounded-lg shadow font-bold flex items-center justify-center active:bg-blue-600">
             🔄 Synchroniseer met Google
         </button>
         <div class="flex space-x-2">
-            <button onclick="exportToExcel()" class="flex-1 bg-green-600 text-white py-3 rounded-lg shadow font-bold text-sm">Excel Export</button>
-            <button onclick="clearData()" class="flex-1 bg-red-50 text-red-600 py-3 rounded-lg text-sm">Wis Lokale Data</button>
+            <button onclick="exportToExcel()" class="flex-1 bg-green-600 text-white py-3 rounded-lg shadow font-bold text-sm active:bg-green-700">Excel Export</button>
+            <button onclick="clearData()" class="flex-1 bg-red-50 text-red-600 py-3 rounded-lg text-sm border border-red-100">Wis Lokale Data</button>
         </div>
     </div>
 
-    <h2 class="font-bold mb-4 text-gray-700">Historie (laatste ritten)</h2>
-    <div id="rittenLijst" class="space-y-3 pb-20"></div>
+    <h2 class="font-bold mb-4 text-gray-700">Historie</h2>
+    <div id="rittenLijst" class="space-y-3 pb-24"></div>
 
     <script>
         // --- CONFIGURATIE ---
@@ -136,26 +143,177 @@
                 lijst.prepend(div);
             });
 
-            // Update Dashboard
             document.getElementById('kmStatus').innerText = `${priveKms} / 500`;
             document.getElementById('kmResterend').innerText = `${Math.max(0, 500 - priveKms)} km over`;
             const percentage = Math.min((priveKms / 500) * 100, 100);
             document.getElementById('progressBar').style.width = percentage + '%';
 
             updateAutoDropdowns();
+        }
+
+        function addAuto() {
+            const input = document.getElementById('newAuto');
+            const val = input.value.trim().toUpperCase();
+            
+            if (!val) return alert('Vul een kenteken in!');
+            if (autos.includes(val)) return alert('Dit kenteken bestaat al!');
+
+            autos.push(val);
+            localStorage.setItem('autos', JSON.stringify(autos));
+            input.value = '';
+            input.blur(); // Sluit toetsenbord op iPhone
+            
+            updateAutoDropdowns();
+            alert('Auto ' + val + ' toegevoegd!');
+        }
+
+        function updateAutoDropdowns() {
+            const select = document.getElementById('autoSelect');
+            const beheerLijst = document.getElementById('autoLijstBeheer');
+            
+            select.innerHTML = '';
+            beheerLijst.innerHTML = '';
+
+            if (autos.length === 0) {
+                const opt = document.createElement('option');
+                opt.innerText = "-- Voeg een auto toe --";
+                select.appendChild(opt);
+            } else {
+                autos.forEach((auto, index) => {
+                    const opt = document.createElement('option');
+                    opt.value = auto; opt.innerText = auto;
+                    select.appendChild(opt);
+
+                    const tag = document.createElement('span');
+                    tag.className = 'bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-bold flex items-center shadow-sm border border-blue-200';
+                    tag.innerHTML = `${auto} <button onclick="removeAuto(${index})" class="ml-2 text-red-500 font-black">×</button>`;
+                    beheerLijst.appendChild(tag);
+                });
+            }
             loadLastData();
+        }
+
+        function removeAuto(index) {
+            if(confirm('Auto verwijderen?')) {
+                autos.splice(index, 1);
+                localStorage.setItem('autos', JSON.stringify(autos));
+                updateAutoDropdowns();
+            }
+        }
+
+        function loadLastData() {
+            const selectedAuto = document.getElementById('autoSelect').value;
+            const rittenVanAuto = ritten.filter(r => r.auto === selectedAuto);
+            
+            if(rittenVanAuto.length > 0) {
+                const laatsteRit = rittenVanAuto[rittenVanAuto.length - 1];
+                document.getElementById('beginStand').value = laatsteRit.eindStand;
+                document.getElementById('vertrekAdres').value = laatsteRit.aankomst;
+            } else {
+                document.getElementById('beginStand').value = '';
+                document.getElementById('vertrekAdres').value = '';
+            }
         }
 
         async function syncRitten() {
             const nietGesynct = ritten.filter(r => !r.synced);
-            
-            if (nietGesynct.length === 0) {
-                return alert("Alle ritten staan al in Google Sheets!");
-            }
+            if (nietGesynct.length === 0) return alert("Alles is al gesynchroniseerd!");
 
-            alert(`Bezig met synchroniseren van ${nietGesynct.length} ritten...`);
-
+            alert('Bezig met synchroniseren...');
             for (let rit of nietGesynct) {
                 try {
                     await fetch(GOOGLE_SCRIPT_URL, {
                         method: 'POST',
+                        mode: 'no-cors', 
+                        body: JSON.stringify(rit)
+                    });
+                    rit.synced = true; 
+                } catch (e) { console.log("Sync fout"); }
+            }
+            localStorage.setItem('ritten', JSON.stringify(ritten));
+            updateUI();
+            alert("Klaar! Je Google Sheet is bijgewerkt.");
+        }
+
+        async function saveRit() {
+            const auto = document.getElementById('autoSelect').value;
+            const begin = parseFloat(document.getElementById('beginStand').value);
+            const eind = parseFloat(document.getElementById('eindStand').value);
+            const vertrek = document.getElementById('vertrekAdres').value;
+            const aankomst = document.getElementById('aankomstAdres').value;
+            const type = document.getElementById('ritType').value;
+
+            if(!begin || !eind || !vertrek || !aankomst || autos.length === 0) {
+                return alert('Vul alle velden in!');
+            }
+            if(eind <= begin) return alert('Eindstand moet hoger zijn!');
+
+            const rit = {
+                id: Date.now(),
+                datum: new Date().toLocaleDateString('nl-NL'),
+                auto: auto,
+                beginStand: begin,
+                eindStand: eind,
+                afstand: eind - begin,
+                vertrek: vertrek,
+                aankomst: aankomst,
+                type: type,
+                synced: false
+            };
+
+            ritten.push(rit);
+            localStorage.setItem('ritten', JSON.stringify(ritten));
+            
+            // Directe sync poging
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                body: JSON.stringify(rit)
+            }).then(() => {
+                rit.synced = true;
+                localStorage.setItem('ritten', JSON.stringify(ritten));
+                updateUI();
+            }).catch(() => console.log("Offline modus"));
+
+            updateUI();
+            document.getElementById('eindStand').value = '';
+            document.getElementById('aankomstAdres').value = '';
+            alert('Rit opgeslagen!');
+        }
+
+        async function getGPS() {
+            if (navigator.geolocation) {
+                document.getElementById('aankomstAdres').value = "Locatie bepalen...";
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+                        const data = await res.json();
+                        document.getElementById('aankomstAdres').value = data.display_name.split(',').slice(0,2).join(',');
+                    } catch (e) { document.getElementById('aankomstAdres').value = "GPS fout"; }
+                });
+            }
+        }
+
+        function exportToExcel() {
+            let csv = "Datum;Kenteken;Beginstand;Eindstand;Afstand;Vertrekadres;Aankomstadres;Type\n";
+            ritten.forEach(r => csv += `${r.datum};${r.auto};${r.beginStand};${r.eindStand};${r.afstand};${r.vertrek};${r.aankomst};${r.type}\n`);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Ritten_Export_${new Date().toLocaleDateString()}.csv`;
+            link.click();
+        }
+
+        function clearData() {
+            if(confirm('Wis alle ritten van dit toestel?')) {
+                localStorage.removeItem('ritten');
+                ritten = [];
+                updateUI();
+            }
+        }
+
+        // Initialisatie
+        updateUI();
+    </script>
+</body>
+</html>
