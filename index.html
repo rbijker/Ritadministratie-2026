@@ -94,6 +94,9 @@
     <div id="rittenLijst" class="space-y-3 pb-20"></div>
 
     <script>
+        // CONFIGURATIE
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzJK6fSqR9zMhKluWK-EV7dHhfeY6RE0wDyHYv4UHXsEtYEoETY8OQfK6RfUNz0Hiw3/exec";
+        
         let ritten = JSON.parse(localStorage.getItem('ritten')) || [];
         let autos = JSON.parse(localStorage.getItem('autos')) || [];
 
@@ -102,7 +105,6 @@
             lijst.innerHTML = '';
             let priveKms = 0;
 
-            // Alleen ritten van huidige geselecteerde auto meetellen voor de 500km bar (optioneel)
             ritten.forEach((rit) => {
                 if(rit.type === 'Privé') priveKms += parseFloat(rit.afstand || 0);
                 
@@ -165,14 +167,18 @@
             if (navigator.geolocation) {
                 document.getElementById('aankomstAdres').value = "Locatie bepalen...";
                 navigator.geolocation.getCurrentPosition(async (pos) => {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
-                    const data = await res.json();
-                    document.getElementById('aankomstAdres').value = data.display_name.split(',').slice(0,2).join(',');
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+                        const data = await res.json();
+                        document.getElementById('aankomstAdres').value = data.display_name.split(',').slice(0,2).join(',');
+                    } catch (e) {
+                        document.getElementById('aankomstAdres').value = "Adres niet gevonden";
+                    }
                 });
             }
         }
 
-        function saveRit() {
+        async function saveRit() {
             const auto = document.getElementById('autoSelect').value;
             const begin = parseFloat(document.getElementById('beginStand').value);
             const eind = parseFloat(document.getElementById('eindStand').value);
@@ -194,14 +200,27 @@
                 type: type
             };
 
+            // Opslaan op de telefoon
             ritten.push(rit);
             localStorage.setItem('ritten', JSON.stringify(ritten));
-            updateUI();
             
-            // Maak velden leeg voor volgende rit
+            // Backup versturen naar Google Sheets
+            try {
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    body: JSON.stringify(rit)
+                });
+            } catch (e) {
+                console.log("Backup kon niet worden verzonden");
+            }
+
+            updateUI();
+
+            // Maak de velden leeg voor de volgende rit
             document.getElementById('eindStand').value = '';
             document.getElementById('aankomstAdres').value = '';
-            alert('Rit opgeslagen!');
+            alert('Rit succesvol geregistreerd!');
         }
 
         function addAuto() {
@@ -217,3 +236,34 @@
         function removeAuto(index) {
             if(confirm('Auto verwijderen?')) {
                 autos.splice(index, 1);
+                localStorage.setItem('autos', JSON.stringify(autos));
+                updateUI();
+            }
+        }
+
+        function exportToExcel() {
+            if(ritten.length === 0) return alert('Geen ritten om te exporteren');
+            let csv = "Datum;Kenteken;Beginstand;Eindstand;Afstand;Vertrekadres;Aankomstadres;Type\n";
+            ritten.forEach(r => {
+                csv += `${r.datum};${r.auto};${r.beginStand};${r.eindStand};${r.afstand};${r.vertrek};${r.aankomst};${r.type}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Rittenregistratie_${new Date().toLocaleDateString()}.csv`;
+            link.click();
+        }
+
+        function clearData() {
+            if(confirm('Let op: Hiermee wis je ALLE data van je telefoon. Weet je het zeker?')) {
+                localStorage.removeItem('ritten');
+                ritten = [];
+                updateUI();
+            }
+        }
+
+        // Start de app
+        updateUI();
+    </script>
+</body>
+</html>
