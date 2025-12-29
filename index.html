@@ -8,20 +8,21 @@
     <style>
         body { background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         .card { background: white; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
+        .btn-delete { color: #ef4444; font-size: 0.8rem; border: 1px solid #ef4444; padding: 2px 8px; border-radius: 5px; }
     </style>
 </head>
 <body class="p-4">
 
     <header class="mb-6">
         <h1 class="text-2xl font-bold text-blue-600">RittenMaster</h1>
-        <p class="text-sm text-gray-500">Belastingdienst-proof rittenregistratie</p>
+        <p class="text-sm text-gray-500">Administratie 2026</p>
     </header>
 
     <div class="card bg-blue-50">
         <h2 class="font-bold text-lg mb-2">Privé Kilometers</h2>
         <div class="flex justify-between items-center">
             <span class="text-3xl font-bold" id="kmStatus">0 / 500</span>
-            <span class="text-sm font-medium text-blue-600">km over</span>
+            <span class="text-sm font-medium text-blue-600">km gereden</span>
         </div>
         <div class="w-full bg-gray-200 rounded-full h-2.5 mt-4">
             <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
@@ -29,57 +30,68 @@
     </div>
 
     <div class="card">
+        <h2 class="font-bold mb-3">Beheer Auto's / Kentekens</h2>
+        <div class="flex space-x-2 mb-4">
+            <input type="text" id="newAuto" placeholder="Bijv. AA-123-B" class="flex-1 p-2 border rounded uppercase">
+            <button onclick="addAuto()" class="bg-blue-500 text-white px-4 py-2 rounded">+</button>
+        </div>
+        <div id="autoLijstBeheer" class="space-y-2 max-h-32 overflow-y-auto border-t pt-2">
+            </div>
+    </div>
+
+    <div class="card border-2 border-blue-200">
         <h2 class="font-bold mb-4">Nieuwe Rit Registreren</h2>
         <div class="space-y-4">
-            <select id="autoSelect" class="w-full p-2 border rounded">
-                <option value="Auto 1">Auto 1 (Standaard)</option>
-                <option value="Auto 2">Auto 2</option>
-            </select>
+            <label class="block text-sm font-medium text-gray-700">Selecteer Auto</label>
+            <select id="autoSelect" class="w-full p-3 border rounded bg-white shadow-sm font-bold">
+                </select>
             
-            <input type="number" id="kmStand" placeholder="Huidige Kilometerstand" class="w-full p-2 border rounded">
+            <input type="number" id="kmStand" placeholder="Huidige Kilometerstand" class="w-full p-3 border rounded shadow-sm">
             
             <div class="flex space-x-2">
-                <input type="text" id="locatie" placeholder="Adres (of gebruik GPS)" class="flex-1 p-2 border rounded">
-                <button onclick="getGPS()" class="bg-gray-200 p-2 rounded">📍</button>
+                <input type="text" id="locatie" placeholder="Adres (of gebruik GPS)" class="flex-1 p-3 border rounded shadow-sm">
+                <button onclick="getGPS()" class="bg-gray-100 p-3 rounded border">📍</button>
             </div>
 
-            <select id="ritType" class="w-full p-2 border rounded">
+            <select id="ritType" class="w-full p-3 border rounded bg-white shadow-sm">
                 <option value="Zakelijk">Zakelijk</option>
                 <option value="Privé">Privé</option>
             </select>
 
-            <button onclick="saveRit()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg">Rit Opslaan</button>
+            <button onclick="saveRit()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform">Rit Opslaan</button>
         </div>
     </div>
 
     <div class="flex space-x-2 mb-8">
-        <button onclick="exportToExcel()" class="flex-1 bg-green-600 text-white py-2 rounded shadow">Excel Export</button>
-        <button onclick="clearData()" class="flex-1 bg-red-100 text-red-600 py-2 rounded">Wis alles</button>
+        <button onclick="exportToExcel()" class="flex-1 bg-green-600 text-white py-3 rounded-lg shadow font-bold">Excel Export</button>
+        <button onclick="clearData()" class="flex-1 bg-red-100 text-red-600 py-3 rounded-lg font-medium text-sm">Wis Gegevens</button>
     </div>
 
-    <h2 class="font-bold mb-4">Laatste Ritten</h2>
-    <div id="rittenLijst" class="space-y-2"></div>
+    <h2 class="font-bold mb-4 text-gray-700">Laatste Ritten</h2>
+    <div id="rittenLijst" class="space-y-2 pb-20"></div>
 
     <script>
         let ritten = JSON.parse(localStorage.getItem('ritten')) || [];
+        let autos = JSON.parse(localStorage.getItem('autos')) || [];
 
         function updateUI() {
+            // Update Rittenlijst
             const lijst = document.getElementById('rittenLijst');
             lijst.innerHTML = '';
             let priveKms = 0;
 
-            ritten.forEach((rit, index) => {
+            ritten.forEach((rit) => {
                 if(rit.type === 'Privé') priveKms += parseFloat(rit.afstand || 0);
                 
                 const div = document.createElement('div');
-                div.className = 'card p-4 text-sm';
+                div.className = 'card p-4 text-sm border-l-4 ' + (rit.type === 'Zakelijk' ? 'border-green-500' : 'border-red-500');
                 div.innerHTML = `
                     <div class="flex justify-between font-bold">
                         <span>${rit.datum}</span>
                         <span class="${rit.type === 'Zakelijk' ? 'text-green-600' : 'text-red-600'}">${rit.type}</span>
                     </div>
-                    <p>${rit.auto} - Stand: ${rit.stand} km</p>
-                    <p class="text-gray-500">${rit.adres}</p>
+                    <p class="font-medium">${rit.auto} | Stand: ${rit.stand} km (+${rit.afstand} km)</p>
+                    <p class="text-gray-500 italic">${rit.adres}</p>
                 `;
                 lijst.prepend(div);
             });
@@ -88,66 +100,126 @@
             document.getElementById('kmStatus').innerText = `${priveKms} / 500`;
             const percentage = Math.min((priveKms / 500) * 100, 100);
             document.getElementById('progressBar').style.width = percentage + '%';
+
+            updateAutoDropdowns();
+        }
+
+        function updateAutoDropdowns() {
+            const select = document.getElementById('autoSelect');
+            const beheerLijst = document.getElementById('autoLijstBeheer');
+            
+            select.innerHTML = autos.length === 0 ? '<option>Voeg eerst een auto toe</option>' : '';
+            beheerLijst.innerHTML = autos.length === 0 ? '<p class="text-gray-400 text-sm">Geen auto\'s geregistreerd</p>' : '';
+
+            autos.forEach((auto, index) => {
+                // Dropdown optie
+                const opt = document.createElement('option');
+                opt.value = auto;
+                opt.innerText = auto;
+                select.appendChild(opt);
+
+                // Beheer item
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center bg-gray-50 p-2 rounded';
+                item.innerHTML = `
+                    <span class="font-bold">${auto}</span>
+                    <button onclick="removeAuto(${index})" class="btn-delete">Verwijder</button>
+                `;
+                beheerLijst.appendChild(item);
+            });
+        }
+
+        function addAuto() {
+            const input = document.getElementById('newAuto');
+            const val = input.value.trim().toUpperCase();
+            if(val && !autos.includes(val)) {
+                autos.push(val);
+                localStorage.setItem('autos', JSON.stringify(autos));
+                input.value = '';
+                updateUI();
+            }
+        }
+
+        function removeAuto(index) {
+            if(confirm('Auto verwijderen? Ritten blijven wel bestaan.')) {
+                autos.splice(index, 1);
+                localStorage.setItem('autos', JSON.stringify(autos));
+                updateUI();
+            }
         }
 
         async function getGPS() {
             if (navigator.geolocation) {
+                document.getElementById('locatie').value = "Locatie ophalen...";
                 navigator.geolocation.getCurrentPosition(async (pos) => {
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
-                    // Gratis Reverse Geocoding via Nominatim
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                    const data = await res.json();
-                    document.getElementById('locatie').value = data.display_name.split(',').slice(0,2).join(',');
-                });
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                        const data = await res.json();
+                        document.getElementById('locatie').value = data.display_name.split(',').slice(0,2).join(',');
+                    } catch(e) {
+                        document.getElementById('locatie').value = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+                    }
+                }, () => alert("GPS mislukt. Geef toestemming in instellingen."));
             }
         }
 
         function saveRit() {
+            const auto = document.getElementById('autoSelect').value;
+            const stand = parseFloat(document.getElementById('kmStand').value);
+            const adres = document.getElementById('locatie').value;
+            const type = document.getElementById('ritType').value;
+
+            if(!stand || !adres || autos.length === 0) return alert('Vul alle velden in en voeg een auto toe!');
+
+            // Bereken afstand t.o.v. vorige rit van DEZE auto
+            const rittenVanDezeAuto = ritten.filter(r => r.auto === auto);
+            const vorigeRit = rittenVanDezeAuto[rittenVanDezeAuto.length - 1];
+            let afstand = 0;
+            if(vorigeRit) {
+                afstand = stand - vorigeRit.stand;
+                if(afstand < 0) return alert('De nieuwe stand is lager dan de vorige stand van deze auto!');
+            }
+
             const rit = {
                 datum: new Date().toLocaleString('nl-NL'),
-                auto: document.getElementById('autoSelect').value,
-                stand: document.getElementById('kmStand').value,
-                adres: document.getElementById('locatie').value,
-                type: document.getElementById('ritType').value,
-                afstand: 0 // In een volgende versie berekenen we dit automatisch tussen twee ritten
+                auto: auto,
+                stand: stand,
+                adres: adres,
+                type: type,
+                afstand: afstand
             };
-
-            if(!rit.stand || !rit.adres) return alert('Vul alle velden in!');
-
-            // Bereken afstand t.o.v. vorige rit van deze auto
-            const vorigeRit = ritten.filter(r => r.auto === rit.auto).slice(-1)[0];
-            if(vorigeRit) {
-                rit.afstand = rit.stand - vorigeRit.stand;
-            }
 
             ritten.push(rit);
             localStorage.setItem('ritten', JSON.stringify(ritten));
             updateUI();
-            alert('Rit succesvol opgeslagen!');
+            alert('Rit opgeslagen!');
         }
 
         function exportToExcel() {
-            let csvContent = "data:text/csv;charset=utf-8,Datum;Auto;Stand;Adres;Type;Afstand\n";
+            if(ritten.length === 0) return alert('Geen ritten om te exporteren');
+            let csvContent = "data:text/csv;charset=utf-8,Datum;Auto;Stand;Adres;Type;Afstand (km)\n";
             ritten.forEach(r => {
                 csvContent += `${r.datum};${r.auto};${r.stand};${r.adres};${r.type};${r.afstand}\n`;
             });
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "rittenregistratie.csv");
+            link.setAttribute("download", `ritten_export_${new Date().toLocaleDateString()}.csv`);
             document.body.appendChild(link);
             link.click();
         }
 
         function clearData() {
-            if(confirm('Weet je zeker dat je alle gegevens wilt wissen?')) {
-                localStorage.clear();
+            if(confirm('Weet je zeker dat je ALLE ritten wilt wissen? Dit kan niet ongedaan worden gemaakt.')) {
+                localStorage.removeItem('ritten');
                 ritten = [];
                 updateUI();
             }
         }
 
+        // Initialisatie
         updateUI();
     </script>
 </body>
